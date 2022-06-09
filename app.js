@@ -1,152 +1,132 @@
-require('dotenv').config();
+require("dotenv").config();
 
-const express = require('express');
-const bodyParser = require("body-parser");
+const express = require("express");
 const mongoose = require("mongoose");
-const session = require("express-session");
+
+import key from "./keys.js";
+import authRouter from "./router/auth";
+
+const bodyParser = require("body-parser");
 const passport = require("passport");
-const passportLocalMongoose = require("passport-local-mongoose");
+const passportLocal = require("passport-local");
 
 const app = express();
 
-app.use(bodyParser.urlencoded({
-    extended: true
-}));
+app.use(
+  bodyParser.urlencoded({
+    extended: false,
+  })
+);
 
-app.use(session({
-    secret: "gfdgdfgfdgfdgfdgfd.",
-    resave: false,
-    saveUninitialized: false
-}));
+mongoose
+  .connect("mongodb://localhost:27017/financeDB", {
+    useNewUrlParser: true,
+    useCreateIndex: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => {
+    console.log("Connected");
+  })
+  .catch((err) => console.log("Error:", err));
 
-app.use(passport.initialize());
-app.use(passport.session());
+app.use(express.json());
+app.use("/", authRouter);
 
-app.use(express.static("public"));
-
-mongoose.connect("mongodb://localhost:27017/financeDB");
-
-const userSchema = new mongoose.Schema({
-    firstName: String,
-    lastName: String,
-    email: String,
-    password: String,
-    cryptos: [cryptoSchema],
-    stocks: [stockSchema]
-});
-
-userSchema.plugin(passportLocalMongoose);
-
-const User = new mongoose.model("User", userSchema);
-
-passport.use(User.createStrategy());
-
-passport.serializeUser(User.serializeUser());
-passport.deserializeUser(User.deserializeUser());
-
-const cryptoSchema = {
-    name: String,
-    symbol: String,
-    currentPrice: Number,
-    userAmount: mongoose.Decimal128
-}
-
-const stockSchema = {
-    name: String,
-    symbol: String,
-    currentPrice: Number,
-    userAmount: Number
-}
+// app.use(express.static("public"));
 
 //check if a user is authenticated
-app.get("/financials", function (req, res) {
-    if (req.isAuthenticated()) {
-        res.render("financials");
+// app.get("/financials", function (req, res) {
+//   if (req.isAuthenticated()) {
+//     res.send(req.user);
+//   } else {
+//     res.redirect("/login");
+//   }
+// });
+
+// //register a new user
+// app.post("/register", function (req, res) {
+//   User.register(
+//     {
+//       username: req.body.username,
+//     },
+//     req.body.password,
+//     function (err, user) {
+//       if (err) {
+//         console.log(err);
+//         //redirect to register page with error
+//       } else {
+//         passport.authenticate("local")(req, res, function () {
+//           //redirect to financials in page
+//         });
+//       }
+//     }
+//   );
+// });
+
+// //log a user in and direct them to the financials page
+app.post("/login", function (req, res) {
+  console.log(req.body);
+  const user = new model.User({
+    username: req.body.username,
+    password: req.body.password,
+  });
+
+  req.login(user, function (err) {
+    if (err) {
+      console.log(err);
     } else {
-        res.redirect("/login");
+      console.log("logged in");
+      passport.authenticate("local")(req, res, function () {
+        res.send("Hello");
+      });
     }
+  });
 });
 
+// app.post("/cryptos", function (req, res) {
+//   const submittedCrypto = req.body.crypto;
+//   // Check if crypto is valid or if it isnt already in user's crypto list
 
-//register a new user
-app.post("/register", function (req, res) {
+//   User.findById(req.user.id, function (err, foundUser) {
+//     if (err) {
+//       console.log(err);
+//     } else {
+//       if (foundUser) {
+//         foundUser.cryptos.push(submittedCrypto);
+//         foundUser.Save(function () {
+//           // might need to change these redirects
+//           res.redirect("/financials");
+//         });
+//       }
+//     }
+//   });
+// });
 
-    User.register({
-        username: req.body.username
-    }, req.body.password, function (err, user) {
-        if (err) {
-            console.log(err);
-            //redirect to register page with error
-        } else {
-            passport.authenticate("local")(req, res, function () {
-                //redirect to financials in page
-            })
-        }
-    })
-});
+// app.post("/stocks", function (req, res) {
+//   const submittedStock = req.body.stock;
+//   // Check if stock is valid or if it isnt already in user's stock list
 
-//log a user in and direct them to the financials page
-app.post("/login", function (res, req) {
-    const user = new User({
-        username: req.body.username,
-        password: req.body.password
-    });
-
-    req.login(user, function (err) {
-        if (err) {
-            console.log(err);
-        } else {
-            passport.authenticate("local")(req, res, function () {
-                res.redirect("/financials");
-            })
-        }
-    })
-});
-
-app.post("/cryptos", function (req, res) {
-    const submittedCrypto = req.body.crypto;
-    // Check if crypto is valid or if it isnt already in user's crypto list
-
-    User.findById(req.user.id, function (err, foundUser) {
-        if (err) {
-            console.log(err);
-        } else {
-            if (foundUser) {
-                foundUser.cryptos.push(submittedCrypto);
-                foundUser.Save(function () {
-                    // might need to change these redirects
-                    res.redirect("/financials");
-                });
-            }
-        }
-    });
-});
-
-app.post("/stocks", function (req, res) {
-    const submittedStock = req.body.stock;
-    // Check if stock is valid or if it isnt already in user's stock list
-
-    User.findById(req.user.id, function (err, foundUser) {
-        if (err) {
-            console.log(err);
-        } else {
-            if (foundUser) {
-                foundUser.stocks.push(submittedStock)
-                foundUser.Save(function () {
-                    // might need to change these redirects
-                    res.redirect("/financials");
-                });
-            }
-        }
-    });
-});
+//   User.findById(req.user.id, function (err, foundUser) {
+//     if (err) {
+//       console.log(err);
+//     } else {
+//       if (foundUser) {
+//         foundUser.stocks.push(submittedStock);
+//         foundUser.Save(function () {
+//           // might need to change these redirects
+//           res.redirect("/financials");
+//         });
+//       }
+//     }
+//   });
+// });
 
 //logout a user
-app.get("/logout", function (req, res) {
-    req.logout();
-    res.redirect("/");
-})
+// app.get("/logout", function (req, res) {
+//   req.logout();
+//   res.redirect("/");
+// });
 
-app.listen(3000, function () {
-    console.log("finance server running on port 3000")
-})
+app.listen(4000, function () {
+  console.log("finance server running on port 4000");
+});
